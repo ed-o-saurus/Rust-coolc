@@ -1,0 +1,16 @@
+[package]
+name = "coolc"
+version = "1.0.0"
+authors = ["Ed Behn (ed@behn.us)"]
+edition = "2018"
+description = "Compile COOL to MIPS assembly"
+readme = "README.md"
+repository = "https://github.com/ed-o-saurus/coolc/"
+license = "GPL-2.0-or-later"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+regex = "1"
+argparse = "0.2.2"
+indexmap = "1.6.0"
