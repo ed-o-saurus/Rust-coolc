@@ -22,7 +22,6 @@ pub fn second_pass_expr(
             line_no,
             name,
             expr,
-            ..
         } => {
             let expr = Box::new(second_pass_expr(
                 *expr,
@@ -657,7 +656,7 @@ pub fn second_pass_expr(
             Expression::IsVoid { line_no, expr }
         }
         Expression::NoExpr => expr,
-        Expression::Object { line_no, name, .. } => {
+        Expression::VarByName { line_no, name, .. } => {
             let static_type = if name.is_self() {
                 TypeID::new_self_type()
             } else {
@@ -672,7 +671,7 @@ pub fn second_pass_expr(
                 }
             };
 
-            Expression::Object {
+            Expression::VarByName {
                 line_no,
                 name,
                 static_type,

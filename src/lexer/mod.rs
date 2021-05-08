@@ -47,7 +47,7 @@ impl Eq for Match {}
 
 // Given a set of regular expressions and the sub-string to be processed
 fn search_pats(pats: &[(Regex, PatName)], remain: &str) -> Match {
-    let mut v: Vec<Match> = vec![];
+    let mut v: Vec<Match> = Vec::new();
 
     // Check all patterns
     for (pat, pat_name) in pats.iter() {
@@ -89,40 +89,40 @@ pub fn tokenize(in_file: File, in_file_name: &str) -> Result<VecDeque<Token>, St
 
         match buff_reader.read_line(&mut line) {
             Ok(0) => break, // No more lines
-            Ok(_) => {}
-            Err(s) => return Err(format!("{} : {} - {}", in_file_name, line_no, s)),
-        }
+            Ok(_) => {
+                // Only ASCII characters are valid in source
+                for b in line.as_bytes().iter() {
+                    if b & 0x80 != 0x00 {
+                        return Err(format!(
+                            "{} : {} - Non-ASCII character in source",
+                            in_file_name, line_no
+                        ));
+                    }
+                }
 
-        // Only ASCII characters are valid in source
-        for b in line.as_bytes().iter() {
-            if b & 0x80 != 0x00 {
-                return Err(format!(
-                    "{} : {} - Non-ASCII character in source",
-                    in_file_name, line_no
-                ));
+                // While there is remaining data in the input line
+                while line.len() > start {
+                    // get the next match
+                    let Match { pat_name, len } = match state_stack.last().unwrap() {
+                        State::Normal => search_pats(&initial_pats, &line[start..]),
+                        State::Comment => search_pats(&comment_pats, &line[start..]),
+                        State::Quote => search_pats(&quote_pats, &line[start..]),
+                    };
+
+                    process(
+                        in_file_name,
+                        line_no,
+                        pat_name,
+                        &line[start..start + len],
+                        &mut state_stack,
+                        &mut tokens,
+                        &mut working_str,
+                    )?;
+
+                    start += len;
+                }
             }
-        }
-
-        // While there is remaining data in the input line
-        while line.len() > start {
-            // get the next match
-            let Match { pat_name, len } = match state_stack.last().unwrap() {
-                State::Normal => search_pats(&initial_pats, &line[start..]),
-                State::Comment => search_pats(&comment_pats, &line[start..]),
-                State::Quote => search_pats(&quote_pats, &line[start..]),
-            };
-
-            process(
-                in_file_name,
-                line_no,
-                pat_name,
-                &line[start..start + len],
-                &mut state_stack,
-                &mut tokens,
-                &mut working_str,
-            )?;
-
-            start += len;
+            Err(s) => return Err(format!("{} : {} - {}", in_file_name, line_no, s)),
         }
     }
 

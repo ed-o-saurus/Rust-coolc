@@ -1,8 +1,8 @@
-use crate::ast::{Class, Expression, ObjectID, TypeID};
+use crate::ast::{Attr, Class, Expression, Method, ObjectID, TypeID};
 use crate::token::Token;
 
 use self::node::ParseStackNode;
-use self::parse_table::{Action, State};
+use self::parse_table::{Action, DispatchType, State};
 use std::collections::VecDeque;
 
 mod node;
@@ -27,7 +27,7 @@ use self::parse_table::get_reduce_new_state_formal_list_ne;
 
 use indexmap::IndexMap;
 
-// Shift/Reduce parser
+// Shift / Reduce parser
 struct Parser {
     tokens: VecDeque<Token>,
     stack: Vec<(ParseStackNode, State)>,
@@ -111,51 +111,23 @@ impl Parser {
 
     // All reduce functions remove nodes from the stack, assemble them into one new node and push that node onto the stack.
 
-    fn reduce_02(
+    fn reduce_class_list(
         &mut self,
         classes: &mut IndexMap<TypeID, Class>,
         in_file_name: &str,
+        is_empty: bool,
     ) -> Result<(), String> {
-        // class_list: class ';'
-
-        self.pop(); // SemiColon
-        let (name, class) = self.pop().into_class();
-
-        let line_no = class.line_no;
-
-        if let Some(prev_case) = classes.insert(name.clone(), class) {
-            if prev_case.basic {
-                return Err(format!(
-                    "{} : {} - Redefinition of basic class {}.",
-                    in_file_name, line_no, name
-                ));
-            } else {
-                return Err(format!(
-                    "{} : {} - Class {} was previously defined.",
-                    in_file_name, line_no, name
-                ));
-            }
-        }
-
-        let new_node = ParseStackNode::ClassList;
-
-        let new_state = get_reduce_new_state_class_list(self.top_state());
-
-        self.push(new_node, new_state);
-
-        Ok(())
-    }
-
-    fn reduce_03(
-        &mut self,
-        classes: &mut IndexMap<TypeID, Class>,
-        in_file_name: &str,
-    ) -> Result<(), String> {
+        // class_list:            class ';'
         // class_list: class_list class ';'
 
         self.pop(); // SemiColon
         let (name, class) = self.pop().into_class();
-        let class_list = self.pop();
+
+        let class_list = if is_empty {
+            ParseStackNode::ClassList
+        } else {
+            self.pop()
+        };
 
         let line_no = class.line_no;
 
@@ -182,42 +154,22 @@ impl Parser {
         Ok(())
     }
 
-    fn reduce_05(&mut self, in_file_name: &str, file_no: u32) {
-        // class: CLASS TYPEID '{' feature_list '}'
-
-        self.pop(); // CloseBrace
-        let features = self.pop();
-        self.pop(); // OpenBrace
-        let name = self.pop().into_type_id();
-        let line_no = self.pop().line_no(); // CLASS
-
-        let parent_name = Some(TypeID::root_class_name());
-
-        let (attrs, methods) = features.extract_features();
-
-        let new_node = ParseStackNode::Class {
-            file_name: in_file_name.to_string(),
-            file_no,
-            line_no,
-            name,
-            parent_name,
-            attrs,
-            methods,
-        };
-
-        let new_state = get_reduce_new_state_class(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_06(&mut self, in_file_name: &str, file_no: u32) {
+    fn reduce_class(&mut self, in_file_name: &str, file_no: u32, has_parent: bool) {
+        // class: CLASS TYPEID                 '{' feature_list '}'
         // class: CLASS TYPEID INHERITS TYPEID '{' feature_list '}'
 
         self.pop(); // CloseBrace
         let features = self.pop();
         self.pop(); // OpenBrace
-        let parent_name = Some(self.pop().into_type_id());
-        self.pop(); // INHERITS
+
+        let parent_name = Some(if has_parent {
+            let parent_name = self.pop().into_type_id();
+            self.pop(); // INHERITS
+            parent_name
+        } else {
+            TypeID::root_class_name()
+        });
+
         let name = self.pop().into_type_id();
         let line_no = self.pop().line_no(); // CLASS
 
@@ -238,45 +190,40 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_07(&mut self) {
+    fn reduce_feature_list(&mut self, in_file_name: &str, is_empty: bool) -> Result<(), String> {
         // feature_list: /* empty */
-        let new_node = ParseStackNode::FeatureList {
-            attrs: Vec::new(),
-            methods: IndexMap::new(),
-        };
-
-        let new_state = get_reduce_new_state_feature_list(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_08(&mut self, in_file_name: &str) -> Result<(), String> {
         // feature_list: feature_list feature ';'
 
-        self.pop(); // SemiColon
-        let feature = self.pop();
-        let features = self.pop();
+        let (attrs, methods) = if is_empty {
+            (Vec::<Attr>::new(), IndexMap::<ObjectID, Method>::new())
+        } else {
+            self.pop(); // SemiColon
+            let feature = self.pop();
+            let features = self.pop();
 
-        let (mut attrs, mut methods) = features.extract_features();
+            let (mut attrs, mut methods) = features.extract_features();
 
-        match feature {
-            ParseStackNode::Attr { .. } => {
-                attrs.push(feature.into_attr());
-            }
-            ParseStackNode::Method { line_no, .. } => {
-                let (name, method) = feature.into_method();
+            match feature {
+                ParseStackNode::Attr { .. } => {
+                    attrs.push(feature.into_attr());
+                }
+                ParseStackNode::Method { line_no, .. } => {
+                    let (name, method) = feature.into_method();
 
-                if methods.insert(name.clone(), method).is_some() {
-                    return Err(format!(
-                        "{} : {} - Method {} is multiply defined.",
-                        in_file_name, line_no, name
-                    ));
+                    if methods.insert(name.clone(), method).is_some() {
+                        return Err(format!(
+                            "{} : {} - Method {} is multiply defined.",
+                            in_file_name, line_no, name
+                        ));
+                    }
+                }
+                _ => {
+                    panic!("Bad ParseStackNode type");
                 }
             }
-            _ => {
-                panic!("Bad ParseStackNode type");
-            }
-        }
+
+            (attrs, methods)
+        };
 
         let new_node = ParseStackNode::FeatureList { attrs, methods };
 
@@ -287,7 +234,7 @@ impl Parser {
         Ok(())
     }
 
-    fn reduce_10(&mut self) {
+    fn reduce_method(&mut self) {
         // feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
 
         self.pop(); // CloseBrace
@@ -315,30 +262,18 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_11(&mut self) {
+    fn reduce_attr(&mut self, has_init: bool) {
         // feature: OBJECTID ':' TYPEID
-
-        let type_decl = self.pop().into_type_id();
-        self.pop(); // Colon
-        let (line_no, name) = self.pop().get_line_no_object_id();
-
-        let new_node = ParseStackNode::Attr {
-            line_no,
-            name,
-            type_decl,
-            init: Expression::NoExpr,
-        };
-
-        let new_state = get_reduce_new_state_feature(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_12(&mut self) {
         // feature: OBJECTID ':' TYPEID ASSIGN expression
 
-        let init = self.pop().into_expression();
-        self.pop(); // ASSIGN
+        let init = if has_init {
+            let init = self.pop().into_expression();
+            self.pop(); // ASSIGN
+            init
+        } else {
+            Expression::NoExpr
+        };
+
         let type_decl = self.pop().into_type_id();
         self.pop(); // Colon
         let (line_no, name) = self.pop().get_line_no_object_id();
@@ -355,28 +290,18 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_13(&mut self) {
-        // formal_list_nE: formal
-
-        let formal = self.pop().into_formal();
-
-        let formals = vec![formal];
-
-        let new_node = ParseStackNode::FormalListNotEmpty { formals };
-
-        let new_state = get_reduce_new_state_formal_list_ne(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_14(&mut self) {
+    fn reduce_formal_list_ne(&mut self, is_empty: bool) {
+        // formal_list_nE:                    formal
         // formal_list_nE: formal_list_nE ',' formal
 
         let formal = self.pop().into_formal();
-        self.pop(); // Comma
-        let formal_list_ne = self.pop();
-
-        let mut formals = formal_list_ne.extract_formals();
+        let mut formals = if is_empty {
+            Vec::new()
+        } else {
+            self.pop(); // Comma
+            let formal_list_ne = self.pop();
+            formal_list_ne.extract_formals()
+        };
 
         formals.push(formal);
 
@@ -387,23 +312,16 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_15(&mut self) {
-        // formal_list: /* empty */
-        let new_node = ParseStackNode::FormalList {
-            formals: Vec::new(),
+    fn reduce_formal_list(&mut self, is_empty: bool) {
+    	// formal_list : /* empty /*
+    	// formal_list : formal_list_ne
+    	
+        let formals = if is_empty {
+            Vec::new()
+        } else {
+            let formal_list_ne = self.pop();
+            formal_list_ne.extract_formals()
         };
-
-        let new_state = get_reduce_new_state_formal_list(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_16(&mut self) {
-        // formal_list: formal_list_nE
-
-        let formal_list_ne = self.pop();
-
-        let formals = formal_list_ne.extract_formals();
 
         let new_node = ParseStackNode::FormalList { formals };
 
@@ -412,7 +330,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_17(&mut self) {
+    fn reduce_formal(&mut self) {
         // formal: OBJECTID ':' TYPEID
 
         let type_decl = self.pop().into_type_id();
@@ -430,29 +348,19 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_18(&mut self) {
-        // branch_list: branch ';'
-
-        self.pop(); // SemiColon
-        let branch = self.pop().into_branch();
-
-        let branches = vec![branch];
-
-        let new_node = ParseStackNode::BranchList { branches };
-
-        let new_state = get_reduce_new_state_branch_list(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_19(&mut self) {
+    fn reduce_branch_list(&mut self, is_empty: bool) {
+        // branch_list:             branch ';'
         // branch_list: branch_list branch ';'
 
         self.pop(); // SemiColon
         let branch = self.pop().into_branch();
-        let branch_list = self.pop();
 
-        let mut branches = branch_list.extract_branches();
+        let mut branches = if is_empty {
+            Vec::new()
+        } else {
+            let branch_list = self.pop();
+            branch_list.extract_branches()
+        };
 
         branches.push(branch);
 
@@ -463,7 +371,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_20(&mut self) {
+    fn reduce_branch(&mut self) {
         // branch: OBJECTID ':' TYPEID DARROW expression
 
         let expr = self.pop().into_expression();
@@ -484,29 +392,19 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_21(&mut self) {
-        // expression_list_SC: expression ';'
-
-        self.pop(); // SemiColon
-        let expr = self.pop().into_expression();
-
-        let exprs = vec![expr];
-
-        let new_node = ParseStackNode::ExpressionListSemiColon { exprs };
-
-        let new_state = get_reduce_new_state_expression_list_sc(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_22(&mut self) {
+    fn reduce_expr_list_sc(&mut self, is_empty: bool) {
+        // expression_list_SC:                    expression ';'
         // expression_list_SC: expression_list_SC expression ';'
 
         self.pop(); // SemiColon
         let expr = self.pop().into_expression();
-        let expr_list = self.pop();
 
-        let mut exprs = expr_list.extract_expressions();
+        let mut exprs = if is_empty {
+            Vec::new()
+        } else {
+            let expr_list = self.pop();
+            expr_list.extract_expressions()
+        };
 
         exprs.push(expr);
 
@@ -517,28 +415,19 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_24(&mut self) {
+    fn reduce_expr_list_c_ne(&mut self, is_empty: bool) {
         // expression_list_C_nE: expression
-
-        let expr = self.pop().into_expression();
-
-        let exprs = vec![expr];
-
-        let new_node = ParseStackNode::ExpressionListCommaNotEmpty { exprs };
-
-        let new_state = get_reduce_new_state_expression_list_c_ne(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_25(&mut self) {
         // expression_list_C_nE: expression_list_C_nE ',' expression
 
         let expr = self.pop().into_expression();
-        self.pop(); // Comma
-        let expr_list_c_ne = self.pop();
 
-        let mut exprs = expr_list_c_ne.extract_expressions();
+        let mut exprs = if is_empty {
+            Vec::new()
+        } else {
+            self.pop(); // Comma
+            let expr_list_c_ne = self.pop();
+            expr_list_c_ne.extract_expressions()
+        };
 
         exprs.push(expr);
 
@@ -549,21 +438,17 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_26(&mut self) {
+    fn reduce_expr_list_c(&mut self, is_empty: bool) {
         // expression_list_C: /* empty */
-        let new_node = ParseStackNode::ExpressionListComma { exprs: Vec::new() };
-
-        let new_state = get_reduce_new_state_expression_list_c(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_27(&mut self) {
         // expression_list_C: expression_list_C_nE
 
-        let expr_list_c_ne = self.pop();
+        let exprs = if is_empty {
+            Vec::new()
+        } else {
+            let expr_list_c_ne = self.pop();
 
-        let exprs = expr_list_c_ne.extract_expressions();
+            expr_list_c_ne.extract_expressions()
+        };
 
         let new_node = ParseStackNode::ExpressionListComma { exprs };
 
@@ -572,37 +457,21 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_28(&mut self) {
-        // expression_let: OBJECTID ':' TYPEID IN expression
-
-        let body = Box::new(self.pop().into_expression());
-        self.pop(); // IN
-        let type_decl = self.pop().into_type_id();
-        self.pop(); // Colon
-        let (line_no, identifier) = self.pop().get_line_no_object_id();
-
-        let init = Box::new(Expression::NoExpr);
-
-        let new_node = ParseStackNode::ExpressionLet {
-            line_no,
-            identifier,
-            type_decl,
-            init,
-            body,
-        };
-
-        let new_state = get_reduce_new_state_expression_let(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_29(&mut self) {
+    fn reduce_expr_let(&mut self, has_init: bool) {
+        // expression_let: OBJECTID ':' TYPEID                   IN expression
         // expression_let: OBJECTID ':' TYPEID ASSIGN expression IN expression
 
         let body = Box::new(self.pop().into_expression());
-        self.pop(); // IN
-        let init = Box::new(self.pop().into_expression());
-        self.pop(); // ASSIGN
+        self.pop(); // IN or Comma
+
+        let init = Box::new(if has_init {
+            let init = self.pop().into_expression();
+            self.pop(); // ASSIGN
+            init
+        } else {
+            Expression::NoExpr
+        });
+
         let type_decl = self.pop().into_type_id();
         self.pop(); // Colon
         let (line_no, identifier) = self.pop().get_line_no_object_id();
@@ -620,55 +489,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_30(&mut self) {
-        // expression_let: OBJECTID ':' TYPEID ',' expression_let
-
-        let body = Box::new(self.pop().into_expression());
-        self.pop(); // IN
-        let type_decl = self.pop().into_type_id();
-        self.pop(); // Colon
-        let (line_no, identifier) = self.pop().get_line_no_object_id();
-
-        let init = Box::new(Expression::NoExpr);
-
-        let new_node = ParseStackNode::ExpressionLet {
-            line_no,
-            identifier,
-            type_decl,
-            init,
-            body,
-        };
-
-        let new_state = get_reduce_new_state_expression_let(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_31(&mut self) {
-        // expression_let: OBJECTID ':' TYPEID ASSIGN expression ',' expression_let
-
-        let body = Box::new(self.pop().into_expression());
-        self.pop(); // IN
-        let init = Box::new(self.pop().into_expression());
-        self.pop(); // ASSIGN
-        let type_decl = self.pop().into_type_id();
-        self.pop(); // Colon
-        let (line_no, identifier) = self.pop().get_line_no_object_id();
-
-        let new_node = ParseStackNode::ExpressionLet {
-            line_no,
-            identifier,
-            type_decl,
-            init,
-            body,
-        };
-
-        let new_state = get_reduce_new_state_expression_let(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_34(&mut self) {
+    fn reduce_assign(&mut self) {
         // expression: OBJECTID ASSIGN expression
 
         let expr = Box::new(self.pop().into_expression());
@@ -686,76 +507,51 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_35(&mut self) {
-        // expression: OBJECTID '(' expression_list_C ')'
-
-        self.pop(); // CloseParen
-        let expression_list_c = self.pop();
-        self.pop(); // OpenParen
-        let (line_no, name) = self.pop().get_line_no_object_id();
-
-        let expr = Box::new(Expression::Object {
-            line_no,
-            name: ObjectID::new_self(),
-            static_type: TypeID::new_no_type(),
-        });
-
-        let args = expression_list_c.extract_expressions();
-
-        let new_node = ParseStackNode::Dispatch {
-            line_no,
-            expr,
-            type_name: None,
-            name,
-            args,
-        };
-
-        let new_state = get_reduce_new_state_expression(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_36(&mut self) {
-        // expression: expression '.' OBJECTID '(' expression_list_C ')'
-
-        self.pop(); // CloseParen
-        let expression_list_c = self.pop();
-        self.pop(); // OpenParen
-        let name = self.pop().into_object_id();
-        self.pop(); // Dot
-        let expr = Box::new(self.pop().into_expression());
-
-        let args = expression_list_c.extract_expressions();
-
-        let new_node = ParseStackNode::Dispatch {
-            line_no: expr.line_no(),
-            expr,
-            type_name: None,
-            name,
-            args,
-        };
-
-        let new_state = get_reduce_new_state_expression(self.top_state());
-
-        self.push(new_node, new_state);
-    }
-
-    fn reduce_37(&mut self) {
+    fn reduce_dispatch(&mut self, dispatch_type: DispatchType) {
+        // expression:                           OBJECTID '(' expression_list_C ')'
+        // expression: expression            '.' OBJECTID '(' expression_list_C ')'
         // expression: expression '@' TYPEID '.' OBJECTID '(' expression_list_C ')'
 
         self.pop(); // CloseParen
         let expression_list_c = self.pop();
         self.pop(); // OpenParen
-        let name = self.pop().into_object_id();
-        self.pop(); // Dot
-        let type_name = Some(self.pop().into_type_id());
-        self.pop(); // At
-        let expr = Box::new(self.pop().into_expression());
+        let (line_no, name) = self.pop().get_line_no_object_id();
+        let type_name = None;
+
+        let (line_no, expr, type_name, name) = match dispatch_type {
+            DispatchType::OnSelf => {
+                let expr = Box::new(Expression::VarByName {
+                    line_no,
+                    name: ObjectID::new_self(),
+                    static_type: TypeID::new_no_type(),
+                });
+
+                (line_no, expr, type_name, name)
+            }
+            DispatchType::OnExpr => {
+                self.pop(); // Dot
+
+                let expr = Box::new(self.pop().into_expression());
+                let line_no = expr.line_no();
+
+                (line_no, expr, type_name, name)
+            }
+            DispatchType::Static => {
+                self.pop(); // Dot
+                let type_name = Some(self.pop().into_type_id());
+                self.pop(); // At
+                let expr = Box::new(self.pop().into_expression());
+
+                let line_no = expr.line_no();
+
+                (line_no, expr, type_name, name)
+            }
+        };
 
         let args = expression_list_c.extract_expressions();
 
         let new_node = ParseStackNode::Dispatch {
-            line_no: expr.line_no(),
+            line_no,
             expr,
             type_name,
             name,
@@ -767,7 +563,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_38(&mut self) {
+    fn reduce_cond(&mut self) {
         // expression: IF expression THEN expression ELSE expression FI
 
         self.pop(); // FI
@@ -790,7 +586,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_39(&mut self) {
+    fn reduce_while(&mut self) {
         // expression: WHILE expression LOOP expression POOL
 
         self.pop(); // POOL
@@ -810,7 +606,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_40(&mut self) {
+    fn reduce_block(&mut self) {
         // expression: '{' expression_list_SC '}'
 
         self.pop(); // CloseBrace
@@ -826,7 +622,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_41(&mut self) {
+    fn reduce_let(&mut self) {
         // expression: LET expression_let
 
         let expr_let = self.pop();
@@ -856,7 +652,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_42(&mut self) {
+    fn reduce_type_case(&mut self) {
         // expression: CASE expression OF branch_list ESAC
 
         self.pop(); // ESAC
@@ -878,7 +674,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_43(&mut self) {
+    fn reduce_new(&mut self) {
         // expression: NEW TYPEID
 
         let type_name = self.pop().into_type_id();
@@ -891,7 +687,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_44(&mut self) {
+    fn reduce_is_void(&mut self) {
         // expression: ISVOID expression
 
         let expr = Box::new(self.pop().into_expression());
@@ -923,7 +719,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_49(&mut self) {
+    fn reduce_neg(&mut self) {
         // expression: '~' expression
 
         let expr = Box::new(self.pop().into_expression());
@@ -956,11 +752,9 @@ impl Parser {
         let new_state = get_reduce_new_state_expression(self.top_state());
 
         self.push(new_node, new_state);
-
-        // self.reduce_comp(CompType::LT);
     }
 
-    fn reduce_52(&mut self) {
+    fn reduce_eq(&mut self) {
         // expression: expression '=' expression
 
         let expr_rhs = Box::new(self.pop().into_expression());
@@ -978,7 +772,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_53(&mut self) {
+    fn reduce_not(&mut self) {
         // expression: NOT expression
 
         let expr = Box::new(self.pop().into_expression());
@@ -994,7 +788,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_54(&mut self) {
+    fn reduce_paren(&mut self) {
         // expression: '(' expression ')'
 
         self.pop(); // CloseParen
@@ -1006,19 +800,19 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_55(&mut self) {
+    fn reduce_var_by_name(&mut self) {
         // expression: OBJECTID
 
         let (line_no, name) = self.pop().get_line_no_object_id();
 
-        let new_node = ParseStackNode::Object { line_no, name };
+        let new_node = ParseStackNode::VarByName { line_no, name };
 
         let new_state = get_reduce_new_state_expression(self.top_state());
 
         self.push(new_node, new_state);
     }
 
-    fn reduce_56(&mut self) {
+    fn reduce_int_const(&mut self) {
         // expression: INT_CONST
 
         let e = self.pop();
@@ -1034,7 +828,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_57(&mut self) {
+    fn reduce_str_const(&mut self) {
         // expression: STR_CONST
 
         let e = self.pop();
@@ -1050,7 +844,7 @@ impl Parser {
         self.push(new_node, new_state);
     }
 
-    fn reduce_58(&mut self) {
+    fn reduce_bool_const(&mut self) {
         // expression: BOOL_CONST
 
         let e = self.pop();
@@ -1080,196 +874,136 @@ impl Parser {
                 self.shift(new_state);
             }
 
-            Action::Reduce02 => {
-                self.reduce_02(classes, in_file_name)?;
+            Action::ReduceClassList { is_empty } => {
+                self.reduce_class_list(classes, in_file_name, is_empty)?;
             }
 
-            Action::Reduce03 => {
-                self.reduce_03(classes, in_file_name)?;
+            Action::ReduceClass { has_parent } => {
+                self.reduce_class(in_file_name, file_no, has_parent);
             }
 
-            Action::Reduce05 => {
-                self.reduce_05(in_file_name, file_no);
+            Action::ReduceFeatureList { is_empty } => {
+                self.reduce_feature_list(in_file_name, is_empty)?;
             }
 
-            Action::Reduce06 => {
-                self.reduce_06(in_file_name, file_no);
+            Action::ReduceMethod => {
+                self.reduce_method();
             }
 
-            Action::Reduce07 => {
-                self.reduce_07();
+            Action::ReduceAttr { has_init } => {
+                self.reduce_attr(has_init);
             }
 
-            Action::Reduce08 => {
-                self.reduce_08(in_file_name)?;
+            Action::ReduceFormalListNE { is_empty } => {
+                self.reduce_formal_list_ne(is_empty);
             }
 
-            Action::Reduce10 => {
-                self.reduce_10();
+            Action::ReduceFormalList { is_empty } => {
+                self.reduce_formal_list(is_empty);
             }
 
-            Action::Reduce11 => {
-                self.reduce_11();
+            Action::ReduceFormal => {
+                self.reduce_formal();
             }
 
-            Action::Reduce12 => {
-                self.reduce_12();
+            Action::ReduceBranchList { is_empty } => {
+                self.reduce_branch_list(is_empty);
             }
 
-            Action::Reduce13 => {
-                self.reduce_13();
+            Action::ReduceBranch => {
+                self.reduce_branch();
             }
 
-            Action::Reduce14 => {
-                self.reduce_14();
+            Action::ReduceExprListSC { is_empty } => {
+                self.reduce_expr_list_sc(is_empty);
             }
 
-            Action::Reduce15 => {
-                self.reduce_15();
+            Action::ReduceExprListCNE { is_empty } => {
+                self.reduce_expr_list_c_ne(is_empty);
             }
 
-            Action::Reduce16 => {
-                self.reduce_16();
+            Action::ReduceExprListC { is_empty } => {
+                self.reduce_expr_list_c(is_empty);
             }
 
-            Action::Reduce17 => {
-                self.reduce_17();
+            Action::ReduceExprLet { has_init } => {
+                self.reduce_expr_let(has_init);
             }
 
-            Action::Reduce18 => {
-                self.reduce_18();
+            Action::ReduceAssign => {
+                self.reduce_assign();
             }
 
-            Action::Reduce19 => {
-                self.reduce_19();
+            Action::ReduceDispatch { dispatch_type } => {
+                self.reduce_dispatch(dispatch_type);
             }
 
-            Action::Reduce20 => {
-                self.reduce_20();
+            Action::ReduceCond => {
+                self.reduce_cond();
             }
 
-            Action::Reduce21 => {
-                self.reduce_21();
+            Action::ReduceWhile => {
+                self.reduce_while();
             }
 
-            Action::Reduce22 => {
-                self.reduce_22();
+            Action::ReduceBlock => {
+                self.reduce_block();
             }
 
-            Action::Reduce24 => {
-                self.reduce_24();
+            Action::ReduceLet => {
+                self.reduce_let();
             }
 
-            Action::Reduce25 => {
-                self.reduce_25();
+            Action::ReduceTypeCase => {
+                self.reduce_type_case();
             }
 
-            Action::Reduce26 => {
-                self.reduce_26();
+            Action::ReduceNew => {
+                self.reduce_new();
             }
 
-            Action::Reduce27 => {
-                self.reduce_27();
-            }
-
-            Action::Reduce28 => {
-                self.reduce_28();
-            }
-
-            Action::Reduce29 => {
-                self.reduce_29();
-            }
-
-            Action::Reduce30 => {
-                self.reduce_30();
-            }
-
-            Action::Reduce31 => {
-                self.reduce_31();
-            }
-
-            Action::Reduce34 => {
-                self.reduce_34();
-            }
-
-            Action::Reduce35 => {
-                self.reduce_35();
-            }
-
-            Action::Reduce36 => {
-                self.reduce_36();
-            }
-
-            Action::Reduce37 => {
-                self.reduce_37();
-            }
-
-            Action::Reduce38 => {
-                self.reduce_38();
-            }
-
-            Action::Reduce39 => {
-                self.reduce_39();
-            }
-
-            Action::Reduce40 => {
-                self.reduce_40();
-            }
-
-            Action::Reduce41 => {
-                self.reduce_41();
-            }
-
-            Action::Reduce42 => {
-                self.reduce_42();
-            }
-
-            Action::Reduce43 => {
-                self.reduce_43();
-            }
-
-            Action::Reduce44 => {
-                self.reduce_44();
+            Action::ReduceIsVoid => {
+                self.reduce_is_void();
             }
 
             Action::ReduceArith => {
                 self.reduce_arith();
             }
 
-            Action::Reduce49 => {
-                self.reduce_49();
+            Action::ReduceNeg => {
+                self.reduce_neg();
             }
 
             Action::ReduceComp => {
                 self.reduce_comp();
             }
 
-            Action::Reduce52 => {
-                self.reduce_52();
+            Action::ReduceEq => {
+                self.reduce_eq();
             }
 
-            Action::Reduce53 => {
-                self.reduce_53();
+            Action::ReduceNot => {
+                self.reduce_not();
             }
 
-            Action::Reduce54 => {
-                self.reduce_54();
+            Action::ReduceParen => {
+                self.reduce_paren();
             }
 
-            Action::Reduce55 => {
-                self.reduce_55();
+            Action::ReduceVarByName => {
+                self.reduce_var_by_name();
             }
 
-            Action::Reduce56 => {
-                self.reduce_56();
+            Action::ReduceIntConst => {
+                self.reduce_int_const();
             }
 
-            Action::Reduce57 => {
-                self.reduce_57();
+            Action::ReduceStrConst => {
+                self.reduce_str_const();
             }
 
-            Action::Reduce58 => {
-                self.reduce_58();
+            Action::ReduceBoolConst => {
+                self.reduce_bool_const();
             }
 
             Action::Accept => {

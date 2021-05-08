@@ -9,8 +9,104 @@ use crate::scoped_collections::ScopedIndexMap;
 use super::{Label, MemLocation};
 use super::{DISPTABLE_LOCATION, TAG_LOCATION};
 
+// Initialization method
+pub fn code_methods(
+    out_file: &mut Box<dyn io::Write>,
+    classes: &IndexMap<TypeID, Class>,
+    class_name: &TypeID,
+    object_locations: &mut ScopedIndexMap<ObjectID, MemLocation>, // Locations of variables
+) -> Result<(), io::Error> {
+    let class: &Class = classes.get(class_name).unwrap();
+
+    object_locations.enter_scope(); // Scope for attributes
+
+    // Add attributes to var list
+    for attr in class.attrs.iter() {
+        object_locations.insert(
+            attr.name.clone(),
+            MemLocation {
+                reg: Register::SELF,
+                offset: attr.self_offset,
+            },
+        );
+    }
+
+    writeln!(out_file, "{}_init:", class_name)?;
+
+    emit_method_start(out_file)?;
+
+    if let Some(parent_name) = &class.parent_name {
+        // Use parent's initialization first
+        emit_jal(out_file, &format!("{}_init", parent_name))?;
+    }
+
+    for attr in class.attrs.iter() {
+        if let Expression::NoExpr = attr.init {
+        } else {
+            // Evaluate init expression
+            code_expr(out_file, &attr.init, class, classes, object_locations, -1)?;
+
+            emit_store_word(
+                // Move to location relative to object (ACC)
+                out_file,
+                Register::ACC,
+                MemLocation {
+                    reg: Register::SELF,
+                    offset: attr.self_offset,
+                },
+            )?;
+        }
+    }
+
+    emit_move(out_file, Register::ACC, Register::SELF)?;
+
+    emit_method_end(out_file, 0)?;
+
+    if !class.basic {
+        // Code for methods of basic objects is in trap.handler
+        // Code methods of class
+        for (method_name, method) in class.methods.iter() {
+            object_locations.enter_scope(); // Scope for arguments (formals)
+
+            // Set locations relative to frame pointer (FP) to values of arguments
+            let mut fp_offset: i16 = (method.formals.len() + 2) as i16;
+            for formal in method.formals.iter() {
+                object_locations.insert(
+                    formal.name.clone(),
+                    MemLocation {
+                        reg: Register::FP,
+                        offset: fp_offset,
+                    },
+                );
+
+                fp_offset -= 1;
+            }
+
+            // Label method
+            writeln!(out_file, "{}.{}:", class_name, method_name)?;
+
+            emit_method_start(out_file)?;
+
+            // Evaluate
+            code_expr(out_file, &method.expr, class, classes, object_locations, -1)?;
+
+            emit_method_end(out_file, method.formals.len() as i16)?;
+
+            object_locations.exit_scope();
+        }
+    }
+
+    for child_class_name in &class.child_names {
+        code_methods(out_file, classes, &child_class_name, object_locations)?;
+    }
+
+    object_locations.exit_scope();
+
+    Ok(())
+}
+
 // Output code for an expression
-pub fn code_expr(
+fn code_expr(
     out_file: &mut Box<dyn io::Write>,
     expr: &Expression,
     current_class: &Class,
@@ -73,6 +169,7 @@ pub fn code_expr(
             // Dispatch on void
             emit_bnez(out_file, Register::ACC, l)?;
 
+            // Load filename and line number for crash
             emit_load_string(out_file, Register::ACC, "file_name", current_class.file_no)?;
             emit_load_imm(out_file, Register::T1, *line_no)?;
             emit_jal(out_file, "_dispatch_abort")?;
@@ -230,7 +327,7 @@ pub fn code_expr(
 
             // Load filename and line number for crash
             emit_load_string(out_file, Register::ACC, "file_name", current_class.file_no)?;
-            emit_load_imm(out_file, Register::T1, *line_no as i16)?;
+            emit_load_imm(out_file, Register::T1, *line_no)?;
             emit_jal(out_file, "_case_abort2")?;
 
             emit_label_def(out_file, label_notvoid)?;
@@ -285,11 +382,11 @@ pub fn code_expr(
 
             if let Expression::NoExpr = **init {
                 if type_decl.is_int() {
-                    emit_load_int(out_file, Register::ACC, 0)?;
+                    emit_load_int(out_file, Register::ACC, 0)?; // Zero
                 } else if type_decl.is_bool() {
-                    emit_load_bool(out_file, Register::ACC, false)?;
+                    emit_load_bool(out_file, Register::ACC, false)?; // False
                 } else if type_decl.is_string() {
-                    emit_load_string(out_file, Register::ACC, "str_const", 0)?;
+                    emit_load_string(out_file, Register::ACC, "str_const", 0)?; // Empty String ("")
                 } else {
                     emit_load_imm(out_file, Register::ACC, 0)?; // Void
                 }
@@ -364,15 +461,7 @@ pub fn code_expr(
             emit_fetch_int(out_file, Register::T1, Register::ACC)?;
 
             // Get the LHS from the top of the stack and put it in T2
-            emit_load_word(
-                out_file,
-                Register::T2,
-                MemLocation {
-                    // TODO
-                    reg: Register::SP,
-                    offset: 1,
-                },
-            )?;
+            emit_load_word(out_file, Register::T2, STACK_NEXT_LOCATION)?;
 
             // Put the LHS value in T3
             emit_fetch_int(out_file, Register::T3, Register::T2)?;
@@ -459,15 +548,7 @@ pub fn code_expr(
             emit_fetch_int(out_file, Register::T1, Register::ACC)?;
 
             // Get the LHS from the top of the stack and put it in T2
-            emit_load_word(
-                out_file,
-                Register::T2,
-                MemLocation {
-                    // TODO
-                    reg: Register::SP,
-                    offset: 1,
-                },
-            )?;
+            emit_load_word(out_file, Register::T2, STACK_NEXT_LOCATION)?;
 
             // Put the LHS value in T3
             emit_fetch_int(out_file, Register::T3, Register::T2)?;
@@ -600,7 +681,7 @@ pub fn code_expr(
                     Register::T1,
                     MemLocation {
                         reg: Register::T3,
-                        offset: 1, // TODO
+                        offset: 1,
                     },
                 )?;
                 emit_jalr(out_file, Register::T1)?;
@@ -635,7 +716,7 @@ pub fn code_expr(
             emit_label_def(out_file, label)?;
         }
         Expression::NoExpr => {} // Never used
-        Expression::Object { name, .. } => {
+        Expression::VarByName { name, .. } => {
             if name.is_self() {
                 // self always refers to SELF register
                 emit_move(out_file, Register::ACC, Register::SELF)?;
@@ -655,7 +736,7 @@ pub fn code_expr(
 }
 
 // Code one branch of a TypeCase
-pub fn code_branch(
+fn code_branch(
     out_file: &mut Box<dyn io::Write>,
     Branch {
         name, expr, family, ..

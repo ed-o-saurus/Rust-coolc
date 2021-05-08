@@ -21,9 +21,13 @@ const RA_CALL_LOCATION: MemLocation = MemLocation {
 };
 
 const STACK_TOP_LOCATION: MemLocation = MemLocation {
-    // TODO
     reg: Register::SP,
     offset: 0,
+};
+
+pub const STACK_NEXT_LOCATION: MemLocation = MemLocation {
+    reg: Register::SP,
+    offset: 1,
 };
 
 // Registers used by the assembly code
@@ -115,7 +119,7 @@ pub fn emit_string_const(
     for b in val.as_bytes().iter() {
         write!(out_file, " {:#04x}", b)?;
     }
-    writeln!(out_file, " 0x00")?; // Bytes are null terminated
+    writeln!(out_file, " 0x00")?; // Strings are null terminated
 
     emit_align(out_file, LG_WORD_SIZE)?;
 

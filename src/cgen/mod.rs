@@ -3,12 +3,12 @@ mod emit;
 
 use std::{fmt, io};
 
-use crate::ast::{Class, Expression, ObjectID, TypeID};
+use crate::ast::{Class, ObjectID, TypeID};
 use crate::scoped_collections::ScopedIndexMap;
 
 use indexmap::IndexMap;
 
-use self::code::code_expr;
+use self::code::code_methods;
 use self::emit::*;
 
 const WORD_SIZE: i16 = 4;
@@ -62,11 +62,10 @@ pub fn cgen(
     int_table: &[u32],
     str_table: &[String],
 ) -> Result<(), String> {
-    if let Err(s) = write_code(out_file, in_file_names, classes, int_table, str_table) {
-        return Err(s.to_string());
+    match write_code(out_file, in_file_names, classes, int_table, str_table) {
+        Err(s) => Err(s.to_string()),
+        Ok(()) => Ok(()),
     }
-
-    Ok(())
 }
 
 // output MIPS assembly for entire program to out_file
@@ -281,111 +280,15 @@ fn proto_attrs(
 
     for attr in class.attrs.iter() {
         if attr.type_decl.is_int() {
-            emit_word(out_file, "int_const_00000000")?;
+            emit_word(out_file, "int_const_00000000")?; // 0
         } else if attr.type_decl.is_bool() {
-            emit_word(out_file, "bool_const0")?;
+            emit_word(out_file, "bool_const0")?; // False
         } else if attr.type_decl.is_string() {
-            emit_word(out_file, "str_const_00000000")?;
+            emit_word(out_file, "str_const_00000000")?; // Empty String ("")
         } else {
             emit_word(out_file, 0)?; // Void
         }
     }
-
-    Ok(())
-}
-
-// Initialization method
-fn code_methods(
-    out_file: &mut Box<dyn io::Write>,
-    classes: &IndexMap<TypeID, Class>,
-    class_name: &TypeID,
-    object_locations: &mut ScopedIndexMap<ObjectID, MemLocation>, // Locations of variables
-) -> Result<(), io::Error> {
-    let class: &Class = classes.get(class_name).unwrap();
-
-    object_locations.enter_scope(); // Scope for attributes
-
-    // Add attributes to var list
-    for attr in class.attrs.iter() {
-        object_locations.insert(
-            attr.name.clone(),
-            MemLocation {
-                reg: Register::SELF,
-                offset: attr.self_offset,
-            },
-        );
-    }
-
-    writeln!(out_file, "{}_init:", class_name)?;
-
-    emit_method_start(out_file)?;
-
-    if let Some(parent_name) = &class.parent_name {
-        // Use parent's initialization first
-        emit_jal(out_file, &format!("{}_init", parent_name))?;
-    }
-
-    for attr in class.attrs.iter() {
-        if let Expression::NoExpr = attr.init {
-        } else {
-            // Evaluate init expression
-            code_expr(out_file, &attr.init, class, classes, object_locations, -1)?;
-
-            emit_store_word(
-                // Move to location relative to object (ACC)
-                out_file,
-                Register::ACC,
-                MemLocation {
-                    reg: Register::SELF,
-                    offset: attr.self_offset,
-                },
-            )?;
-        }
-    }
-
-    emit_move(out_file, Register::ACC, Register::SELF)?;
-
-    emit_method_end(out_file, 0)?;
-
-    if !class.basic {
-        // Code for methods of basic objects is in trap.handler
-        // Code methods of class
-        for (method_name, method) in class.methods.iter() {
-            object_locations.enter_scope(); // Scope for arguments (formals)
-
-            // Set locations relative to frame pointer (FP) to values of arguments
-            let mut fp_offset: i16 = (method.formals.len() + 2) as i16;
-            for formal in method.formals.iter() {
-                object_locations.insert(
-                    formal.name.clone(),
-                    MemLocation {
-                        reg: Register::FP,
-                        offset: fp_offset,
-                    },
-                );
-
-                fp_offset -= 1;
-            }
-
-            // Label method
-            writeln!(out_file, "{}.{}:", class_name, method_name)?;
-
-            emit_method_start(out_file)?;
-
-            // Evaluate
-            code_expr(out_file, &method.expr, class, classes, object_locations, -1)?;
-
-            emit_method_end(out_file, method.formals.len() as i16)?;
-
-            object_locations.exit_scope();
-        }
-    }
-
-    for child_class_name in &class.child_names {
-        code_methods(out_file, classes, &child_class_name, object_locations)?;
-    }
-
-    object_locations.exit_scope();
 
     Ok(())
 }

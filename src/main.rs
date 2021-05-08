@@ -22,9 +22,29 @@ use crate::lexer::tokenize;
 use crate::parser::parse;
 use crate::semant::semant;
 
+fn get_name(in_file_name: &String, file_no: u32) -> Result<&str, String> {
+    match Path::new(in_file_name).file_name() {
+        Some(in_file_name) => match in_file_name.to_str() {
+            Some(in_file_name) => return Ok(&in_file_name),
+            None => {
+                return Err(format!(
+                    "Cannot process input file name number {}.",
+                    file_no
+                ))
+            }
+        },
+        None => {
+            return Err(format!(
+                "Cannot process input file name number {}.",
+                file_no
+            ))
+        }
+    };
+}
+
 fn coolc() -> Result<(), String> {
     let mut out_file_name: Option<String> = None; // Stores the output path or None if not specified
-    let mut in_file_names: Vec<String> = vec![]; // Stores the paths of the source files
+    let mut in_file_names: Vec<String> = Vec::new(); // Stores the paths of the source files
 
     {
         // Get arguments from the command line
@@ -62,13 +82,7 @@ fn coolc() -> Result<(), String> {
         // Tokenize the file
         let tokens = tokenize(in_file, in_file_name)?;
 
-        let in_file_name = match Path::new(in_file_name).file_name() {
-            Some(in_file_name) => match in_file_name.to_str() {
-                Some(in_file_name) => in_file_name,
-                None => return Err(format!("Cannot process input file name")),
-            },
-            None => return Err(format!("Cannot process input file name")),
-        };
+        let in_file_name = get_name(in_file_name, file_no)?;
 
         // Parse the tokens into class definitions.
         // The classes are added to the classes map.
@@ -82,7 +96,9 @@ fn coolc() -> Result<(), String> {
         semant(classes)?;
 
     // add lengths of source files to int_table
-    for in_file_name in in_file_names.iter() {
+    for (in_file_name, file_no) in in_file_names.iter().zip(1..) {
+        let in_file_name = get_name(in_file_name, file_no)?;
+
         int_table.insert(in_file_name.len() as u32);
     }
 
@@ -107,10 +123,10 @@ fn coolc() -> Result<(), String> {
             {
                 Some(out_file_name) => match out_file_name.to_str() {
                     Some(out_file_name) => out_file_name.to_string(),
-                    None => return Err(format!("Cannot process output file name")),
+                    None => return Err(format!("Cannot process output file name.")),
                 },
 
-                None => return Err(format!("Cannot process output file name")),
+                None => return Err(format!("Cannot process output file name.")),
             }
         }
     };

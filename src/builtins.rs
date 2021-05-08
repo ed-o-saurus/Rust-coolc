@@ -17,29 +17,31 @@ const attrs: Vec<Attr> = Vec::new();
 const family: Range<u32> = 0..0;
 const child_names: Vec<TypeID> = Vec::new();
 const dispatch_table: Vec<(TypeID, ObjectID)> = Vec::new();
+const formals: Vec<Formal> = Vec::new();
+const expr: Expression = Expression::NoExpr;
 
 // Create a classes map with the basic classes
 pub fn initialize_classes() -> IndexMap<TypeID, Class> {
     let class_object = {
         let abort = Method {
             line_no,
-            formals: vec![],
+            formals,
             return_type: TypeID::new_object(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let type_name = Method {
             line_no,
-            formals: vec![],
+            formals,
             return_type: TypeID::new_string(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let copy = Method {
             line_no,
-            formals: vec![],
+            formals,
             return_type: TypeID::new_self_type(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let mut methods: IndexMap<ObjectID, Method> = IndexMap::new();
@@ -71,7 +73,7 @@ pub fn initialize_classes() -> IndexMap<TypeID, Class> {
                 type_decl: TypeID::new_string(),
             }],
             return_type: TypeID::new_self_type(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let out_int = Method {
@@ -82,21 +84,21 @@ pub fn initialize_classes() -> IndexMap<TypeID, Class> {
                 type_decl: TypeID::new_int(),
             }],
             return_type: TypeID::new_self_type(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let in_string = Method {
             line_no,
-            formals: vec![],
+            formals,
             return_type: TypeID::new_string(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let in_int = Method {
             line_no,
-            formals: vec![],
+            formals,
             return_type: TypeID::new_int(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let mut methods: IndexMap<ObjectID, Method> = IndexMap::new();
@@ -191,9 +193,9 @@ pub fn initialize_classes() -> IndexMap<TypeID, Class> {
 
         let length = Method {
             line_no,
-            formals: vec![],
+            formals,
             return_type: TypeID::new_int(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let concat = Method {
@@ -204,7 +206,7 @@ pub fn initialize_classes() -> IndexMap<TypeID, Class> {
                 type_decl: TypeID::new_string(),
             }],
             return_type: TypeID::new_string(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let substr = Method {
@@ -222,7 +224,7 @@ pub fn initialize_classes() -> IndexMap<TypeID, Class> {
                 },
             ],
             return_type: TypeID::new_string(),
-            expr: Expression::NoExpr,
+            expr,
         };
 
         let mut methods: IndexMap<ObjectID, Method> = IndexMap::new();

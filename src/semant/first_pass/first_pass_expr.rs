@@ -508,6 +508,6 @@ pub fn first_pass_expr(
             Expression::IsVoid { line_no, expr }
         }
         Expression::NoExpr => expr,
-        Expression::Object { .. } => expr,
+        Expression::VarByName { .. } => expr,
     })
 }

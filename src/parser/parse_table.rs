@@ -6,18 +6,24 @@ use crate::token::Token;
 #[derive(Copy, Clone)]
 pub enum State {
     StateInitial, // Initial State matched with the Bottom Node
+    State001,
     State002,
+    State003,
     State004,
     State005,
+    State006,
     State007,
+    State008,
     State009,
     State010,
     State011,
     State012,
     State013,
     State014,
+    State015,
     State016,
     State017,
+    State018,
     State019,
     State020,
     State021,
@@ -55,6 +61,7 @@ pub enum State {
     State053,
     State054,
     State055,
+    State056,
     State057,
     State058,
     State059,
@@ -65,6 +72,7 @@ pub enum State {
     State064,
     State065,
     State066,
+    State067,
     State068,
     State069,
     State070,
@@ -79,6 +87,8 @@ pub enum State {
     State079,
     State080,
     State081,
+    State082,
+    State083,
     State084,
     State085,
     State086,
@@ -86,6 +96,7 @@ pub enum State {
     State088,
     State089,
     State090,
+    State091,
     State092,
     State093,
     State094,
@@ -101,6 +112,8 @@ pub enum State {
     State104,
     State105,
     State106,
+    State107,
+    State108,
     State109,
     State110,
     State111,
@@ -128,72 +141,50 @@ pub enum State {
     State133,
     State134,
     State135,
-    State136,
-    State137,
-    State138,
-    State139,
-    State140,
-    State141,
-    State142,
-    State143,
-    State144,
-    State145,
-    State146,
-    State147,
-    State148,
+}
+
+pub enum DispatchType {
+    OnSelf,
+    OnExpr,
+    Static,
 }
 
 // Action to be carried out by the parse as determined by the parse table
 pub enum Action {
     Shift { new_state: State },
-    Reduce02,
-    Reduce03,
-    Reduce05,
-    Reduce06,
-    Reduce07,
-    Reduce08,
-    Reduce10,
-    Reduce11,
-    Reduce12,
-    Reduce13,
-    Reduce14,
-    Reduce15,
-    Reduce16,
-    Reduce17,
-    Reduce18,
-    Reduce19,
-    Reduce20,
-    Reduce21,
-    Reduce22,
-    Reduce24,
-    Reduce25,
-    Reduce26,
-    Reduce27,
-    Reduce28,
-    Reduce29,
-    Reduce30,
-    Reduce31,
-    Reduce34,
-    Reduce35,
-    Reduce36,
-    Reduce37,
-    Reduce38,
-    Reduce39,
-    Reduce40,
-    Reduce41,
-    Reduce42,
-    Reduce43,
-    Reduce44,
+    ReduceClassList { is_empty: bool },
+    ReduceClass { has_parent: bool },
+    ReduceFeatureList { is_empty: bool },
+    ReduceMethod,
+    ReduceAttr { has_init: bool },
+    ReduceFormalListNE { is_empty: bool },
+    ReduceFormalList { is_empty: bool },
+    ReduceFormal,
+    ReduceBranchList { is_empty: bool },
+    ReduceBranch,
+    ReduceExprListSC { is_empty: bool },
+    ReduceExprListCNE { is_empty: bool },
+    ReduceExprListC { is_empty: bool },
+    ReduceExprLet { has_init: bool },
+    ReduceAssign,
+    ReduceDispatch { dispatch_type: DispatchType },
+    ReduceCond,
+    ReduceWhile,
+    ReduceBlock,
+    ReduceLet,
+    ReduceTypeCase,
+    ReduceNew,
+    ReduceIsVoid,
     ReduceArith,
-    Reduce49,
+    ReduceNeg,
     ReduceComp,
-    Reduce52,
-    Reduce53,
-    Reduce54,
-    Reduce55,
-    Reduce56,
-    Reduce57,
-    Reduce58,
+    ReduceEq,
+    ReduceNot,
+    ReduceParen,
+    ReduceVarByName,
+    ReduceIntConst,
+    ReduceStrConst,
+    ReduceBoolConst,
     Accept,
 }
 
@@ -204,7 +195,16 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
     Ok(match top_state {
         State::StateInitial => match next_token {
             Token::Class { .. } => Action::Shift {
-                new_state: State::State002,
+                new_state: State::State001,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State001 => match next_token {
+            Token::TypeID { .. } => Action::Shift {
+                new_state: State::State004,
             },
             _ => {
                 return Err(next_line_no);
@@ -212,17 +212,8 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State002 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
-                new_state: State::State007,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State004 => match next_token {
             Token::Class { .. } => Action::Shift {
-                new_state: State::State002,
+                new_state: State::State001,
             },
             Token::End { .. } => Action::Accept,
             _ => {
@@ -230,8 +221,40 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
+        State::State003 => match next_token {
+            Token::SemiColon { .. } => Action::Shift {
+                new_state: State::State006,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State004 => match next_token {
+            Token::Inherits { .. } => Action::Shift {
+                new_state: State::State007,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State008,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
         State::State005 => match next_token {
             Token::SemiColon { .. } => Action::Shift {
+                new_state: State::State009,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State006 => Action::ReduceClassList { is_empty: true },
+
+        State::State007 => match next_token {
+            Token::TypeID { .. } => Action::Shift {
                 new_state: State::State010,
             },
             _ => {
@@ -239,10 +262,17 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State007 => match next_token {
-            Token::Inherits { .. } => Action::Shift {
-                new_state: State::State011,
-            },
+        State::State008 => match next_token {
+            Token::ObjectID { .. } => Action::ReduceFeatureList { is_empty: true },
+            Token::CloseBrace { .. } => Action::ReduceFeatureList { is_empty: true },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State009 => Action::ReduceClassList { is_empty: false },
+
+        State::State010 => match next_token {
             Token::OpenBrace { .. } => Action::Shift {
                 new_state: State::State012,
             },
@@ -251,19 +281,11 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State009 => match next_token {
-            Token::SemiColon { .. } => Action::Shift {
+        State::State011 => match next_token {
+            Token::ObjectID { .. } => Action::Shift {
                 new_state: State::State013,
             },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State010 => Action::Reduce02,
-
-        State::State011 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
+            Token::CloseBrace { .. } => Action::Shift {
                 new_state: State::State014,
             },
             _ => {
@@ -272,18 +294,30 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State012 => match next_token {
-            Token::ObjectID { .. } => Action::Reduce07,
-            Token::CloseBrace { .. } => Action::Reduce07,
+            Token::ObjectID { .. } => Action::ReduceFeatureList { is_empty: true },
+            Token::CloseBrace { .. } => Action::ReduceFeatureList { is_empty: true },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State013 => Action::Reduce03,
-
-        State::State014 => match next_token {
-            Token::OpenBrace { .. } => Action::Shift {
+        State::State013 => match next_token {
+            Token::OpenParen { .. } => Action::Shift {
                 new_state: State::State017,
+            },
+            Token::Colon { .. } => Action::Shift {
+                new_state: State::State018,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State014 => Action::ReduceClass { has_parent: false },
+
+        State::State015 => match next_token {
+            Token::SemiColon { .. } => Action::Shift {
+                new_state: State::State019,
             },
             _ => {
                 return Err(next_line_no);
@@ -292,7 +326,7 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State016 => match next_token {
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State019,
+                new_state: State::State013,
             },
             Token::CloseBrace { .. } => Action::Shift {
                 new_state: State::State020,
@@ -303,29 +337,14 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State017 => match next_token {
-            Token::ObjectID { .. } => Action::Reduce07,
-            Token::CloseBrace { .. } => Action::Reduce07,
-            _ => {
-                return Err(next_line_no);
-            }
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State021,
+            },
+            _ => Action::ReduceFormalList { is_empty: true },
         },
 
-        State::State019 => match next_token {
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State023,
-            },
-            Token::Colon { .. } => Action::Shift {
-                new_state: State::State024,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State020 => Action::Reduce05,
-
-        State::State021 => match next_token {
-            Token::SemiColon { .. } => Action::Shift {
+        State::State018 => match next_token {
+            Token::TypeID { .. } => Action::Shift {
                 new_state: State::State025,
             },
             _ => {
@@ -333,11 +352,12 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State022 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State019,
-            },
-            Token::CloseBrace { .. } => Action::Shift {
+        State::State019 => Action::ReduceFeatureList { is_empty: false },
+
+        State::State020 => Action::ReduceClass { has_parent: true },
+
+        State::State021 => match next_token {
+            Token::Colon { .. } => Action::Shift {
                 new_state: State::State026,
             },
             _ => {
@@ -345,27 +365,50 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State023 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
+        State::State022 => match next_token {
+            Token::Comma { .. } => Action::Shift {
                 new_state: State::State027,
             },
-            _ => Action::Reduce15,
+            _ => Action::ReduceFormalList { is_empty: false },
         },
 
-        State::State024 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
-                new_state: State::State031,
+        State::State023 => match next_token {
+            Token::CloseParen { .. } => Action::Shift {
+                new_state: State::State028,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State025 => Action::Reduce08,
+        State::State024 => Action::ReduceFormalListNE { is_empty: true },
 
-        State::State026 => Action::Reduce06,
+        State::State025 => match next_token {
+            Token::Assign { .. } => Action::Shift {
+                new_state: State::State029,
+            },
+            _ => Action::ReduceAttr { has_init: false },
+        },
+
+        State::State026 => match next_token {
+            Token::TypeID { .. } => Action::Shift {
+                new_state: State::State030,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
 
         State::State027 => match next_token {
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State021,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State028 => match next_token {
             Token::Colon { .. } => Action::Shift {
                 new_state: State::State032,
             },
@@ -374,34 +417,61 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State028 => match next_token {
-            Token::Comma { .. } => Action::Shift {
+        State::State029 => match next_token {
+            Token::If { .. } => Action::Shift {
                 new_state: State::State033,
             },
-            _ => Action::Reduce16,
-        },
-
-        State::State029 => match next_token {
-            Token::CloseParen { .. } => Action::Shift {
+            Token::Let { .. } => Action::Shift {
                 new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State030 => Action::Reduce13,
+        State::State030 => Action::ReduceFormal,
 
-        State::State031 => match next_token {
-            Token::Assign { .. } => Action::Shift {
-                new_state: State::State035,
-            },
-            _ => Action::Reduce11,
-        },
+        State::State031 => Action::ReduceFormalListNE { is_empty: false },
 
         State::State032 => match next_token {
             Token::TypeID { .. } => Action::Shift {
-                new_state: State::State036,
+                new_state: State::State048,
             },
             _ => {
                 return Err(next_line_no);
@@ -409,8 +479,47 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State033 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State027,
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -418,8 +527,8 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State034 => match next_token {
-            Token::Colon { .. } => Action::Shift {
-                new_state: State::State038,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State050,
             },
             _ => {
                 return Err(next_line_no);
@@ -428,57 +537,101 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State035 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State036 => Action::Reduce17,
+        State::State036 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
 
-        State::State037 => Action::Reduce14,
-
-        State::State038 => match next_token {
+        State::State037 => match next_token {
             Token::TypeID { .. } => Action::Shift {
                 new_state: State::State054,
             },
@@ -487,162 +640,112 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State039 => match next_token {
+        State::State038 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State040 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State057,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
+        State::State039 => Action::ReduceStrConst,
 
-        State::State041 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
+        State::State040 => Action::ReduceIntConst,
+
+        State::State041 => Action::ReduceBoolConst,
 
         State::State042 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+            Token::Assign { .. } => Action::Shift {
+                new_state: State::State056,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State057,
             },
-            _ => {
-                return Err(next_line_no);
-            }
+            _ => Action::ReduceVarByName,
         },
 
         State::State043 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
-                new_state: State::State061,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -651,110 +754,218 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State044 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State045 => Action::Reduce57,
-
-        State::State046 => Action::Reduce56,
-
-        State::State047 => Action::Reduce58,
-
-        State::State048 => match next_token {
-            Token::Assign { .. } => Action::Shift {
-                new_state: State::State063,
+        State::State045 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State046 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State047 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
                 new_state: State::State064,
             },
-            _ => Action::Reduce55,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceAttr { has_init: true },
+        },
+
+        State::State048 => match next_token {
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State072,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
         State::State049 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+            Token::Then { .. } => Action::Shift {
+                new_state: State::State073,
             },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
             },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
             },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
             },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
             },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
             },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
             },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
             },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
             _ => {
                 return Err(next_line_no);
@@ -762,143 +973,46 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State050 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+            Token::Colon { .. } => Action::Shift {
+                new_state: State::State074,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State051 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
+        State::State051 => Action::ReduceLet,
 
         State::State052 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+            Token::Loop { .. } => Action::Shift {
+                new_state: State::State075,
             },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
             },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
             },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
             },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
             },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
             },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
             },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
             },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
             _ => {
                 return Err(next_line_no);
@@ -906,75 +1020,95 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State053 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
+            Token::Of { .. } => Action::Shift {
                 new_state: State::State076,
             },
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
             Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+                new_state: State::State069,
             },
             Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+                new_state: State::State070,
             },
             Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce12,
-        },
-
-        State::State054 => match next_token {
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State080,
+                new_state: State::State071,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
+        State::State054 => Action::ReduceNew,
+
         State::State055 => match next_token {
-            Token::Then { .. } => Action::Shift {
-                new_state: State::State081,
-            },
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
             Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+                new_state: State::State070,
             },
             Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+                new_state: State::State071,
+            },
+            _ => Action::ReduceIsVoid,
+        },
+
+        State::State056 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -982,7 +1116,208 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State057 => match next_token {
-            Token::Colon { .. } => Action::Shift {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => Action::ReduceExprListC { is_empty: true },
+        },
+
+        State::State058 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceNot,
+        },
+
+        State::State059 => match next_token {
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceNeg,
+        },
+
+        State::State060 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::CloseBrace { .. } => Action::Shift {
+                new_state: State::State081,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State061 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            Token::SemiColon { .. } => Action::Shift {
+                new_state: State::State083,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State062 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            Token::CloseParen { .. } => Action::Shift {
                 new_state: State::State084,
             },
             _ => {
@@ -990,134 +1325,48 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State058 => Action::Reduce41,
-
-        State::State059 => match next_token {
-            Token::Loop { .. } => Action::Shift {
-                new_state: State::State085,
-            },
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State060 => match next_token {
-            Token::Of { .. } => Action::Shift {
-                new_state: State::State086,
-            },
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State061 => Action::Reduce43,
-
-        State::State062 => match next_token {
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce44,
-        },
-
         State::State063 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -1126,136 +1375,238 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State064 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
-            _ => Action::Reduce26,
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
         State::State065 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
             },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
             },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
             },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
             },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
             },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
             },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
             },
-            _ => Action::Reduce53,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
         State::State066 => match next_token {
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            _ => Action::Reduce49,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State067 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
         State::State068 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::CloseBrace { .. } => Action::Shift {
-                new_state: State::State092,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -1263,35 +1614,47 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State069 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
             },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
             },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
             },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
             },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
             },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
             },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
             },
-            Token::SemiColon { .. } => Action::Shift {
-                new_state: State::State094,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -1299,35 +1662,8 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State070 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            Token::CloseParen { .. } => Action::Shift {
-                new_state: State::State095,
+            Token::TypeID { .. } => Action::Shift {
+                new_state: State::State092,
             },
             _ => {
                 return Err(next_line_no);
@@ -1335,47 +1671,8 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State071 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State093,
             },
             _ => {
                 return Err(next_line_no);
@@ -1384,46 +1681,46 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State072 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -1432,46 +1729,46 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State073 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -1479,47 +1776,8 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State074 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+            Token::TypeID { .. } => Action::Shift {
+                new_state: State::State096,
             },
             _ => {
                 return Err(next_line_no);
@@ -1528,46 +1786,46 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State075 => match next_token {
             Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+                new_state: State::State033,
             },
             Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+                new_state: State::State034,
             },
             Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+                new_state: State::State035,
             },
             Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+                new_state: State::State036,
             },
             Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+                new_state: State::State037,
             },
             Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+                new_state: State::State038,
             },
             Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+                new_state: State::State039,
             },
             Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+                new_state: State::State040,
             },
             Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+                new_state: State::State041,
             },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+                new_state: State::State042,
             },
             Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+                new_state: State::State043,
             },
             Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+                new_state: State::State044,
             },
             Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+                new_state: State::State045,
             },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -1575,47 +1833,8 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State076 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
             Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+                new_state: State::State098,
             },
             _ => {
                 return Err(next_line_no);
@@ -1623,65 +1842,46 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State077 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
             },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
             },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
             },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
             },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
             },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
             },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
             },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
+            _ => Action::ReduceAssign,
         },
 
         State::State078 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
-                new_state: State::State103,
+            Token::Comma { .. } => Action::Shift {
+                new_state: State::State101,
             },
-            _ => {
-                return Err(next_line_no);
-            }
+            _ => Action::ReduceExprListC { is_empty: false },
         },
 
         State::State079 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State104,
+            Token::CloseParen { .. } => Action::Shift {
+                new_state: State::State102,
             },
             _ => {
                 return Err(next_line_no);
@@ -1689,207 +1889,360 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State080 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
             },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
             },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
             },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
             },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
             },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
             },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
             },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
+            _ => Action::ReduceExprListCNE { is_empty: true },
+        },
+
+        State::State081 => Action::ReduceBlock,
+
+        State::State082 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
             },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
             },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
             },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            Token::SemiColon { .. } => Action::Shift {
+                new_state: State::State103,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State081 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
+        State::State083 => Action::ReduceExprListSC { is_empty: true },
 
-        State::State084 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
-                new_state: State::State109,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
+        State::State084 => Action::ReduceParen,
 
         State::State085 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
             },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
             },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
             },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
             },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
+            _ => Action::ReduceComp,
         },
 
         State::State086 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State111,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceComp,
+        },
+
+        State::State087 => match next_token {
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceEq,
+        },
+
+        State::State088 => match next_token {
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceArith,
+        },
+
+        State::State089 => match next_token {
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceArith,
+        },
+
+        State::State090 => match next_token {
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceArith,
+        },
+
+        State::State091 => match next_token {
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceArith,
+        },
+
+        State::State092 => match next_token {
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State104,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State087 => match next_token {
+        State::State093 => match next_token {
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State105,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State094 => match next_token {
             Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+                new_state: State::State063,
             },
             Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+                new_state: State::State064,
             },
             Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+                new_state: State::State065,
             },
             Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+                new_state: State::State066,
             },
             Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+                new_state: State::State067,
             },
             Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+                new_state: State::State068,
             },
             Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+                new_state: State::State069,
             },
             Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+                new_state: State::State070,
             },
             Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+                new_state: State::State071,
             },
-            _ => Action::Reduce34,
+            Token::CloseBrace { .. } => Action::Shift {
+                new_state: State::State106,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
-        State::State088 => match next_token {
+        State::State095 => match next_token {
+            Token::Else { .. } => Action::Shift {
+                new_state: State::State107,
+            },
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State096 => match next_token {
+            Token::In { .. } => Action::Shift {
+                new_state: State::State108,
+            },
+            Token::Assign { .. } => Action::Shift {
+                new_state: State::State109,
+            },
             Token::Comma { .. } => Action::Shift {
-                new_state: State::State114,
+                new_state: State::State110,
             },
-            _ => Action::Reduce27,
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
-        State::State089 => match next_token {
-            Token::CloseParen { .. } => Action::Shift {
+        State::State097 => match next_token {
+            Token::Pool { .. } => Action::Shift {
+                new_state: State::State111,
+            },
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State098 => match next_token {
+            Token::Colon { .. } => Action::Shift {
+                new_state: State::State112,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State099 => match next_token {
+            Token::Esac { .. } => Action::Shift {
+                new_state: State::State113,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State098,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State100 => match next_token {
+            Token::SemiColon { .. } => Action::Shift {
                 new_state: State::State115,
             },
             _ => {
@@ -1897,199 +2250,62 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State090 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+        State::State101 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
             },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
             },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
             },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
             },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
             },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
             },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
             },
-            _ => Action::Reduce24,
-        },
-
-        State::State092 => Action::Reduce40,
-
-        State::State093 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
             },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
             },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
             },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            Token::SemiColon { .. } => Action::Shift {
-                new_state: State::State116,
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State094 => Action::Reduce21,
-
-        State::State095 => Action::Reduce54,
-
-        State::State096 => match next_token {
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::ReduceComp,
+        State::State102 => Action::ReduceDispatch {
+            dispatch_type: DispatchType::OnSelf,
         },
 
-        State::State097 => match next_token {
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::ReduceComp,
-        },
+        State::State103 => Action::ReduceExprListSC { is_empty: false },
 
-        State::State098 => match next_token {
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce52,
-        },
-
-        State::State099 => match next_token {
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::ReduceArith,
-        },
-
-        State::State100 => match next_token {
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::ReduceArith,
-        },
-
-        State::State101 => match next_token {
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::ReduceArith,
-        },
-
-        State::State102 => match next_token {
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::ReduceArith,
-        },
-
-        State::State103 => match next_token {
-            Token::Dot { .. } => Action::Shift {
+        State::State104 => match next_token {
+            Token::ObjectID { .. } => Action::Shift {
                 new_state: State::State117,
             },
             _ => {
@@ -2097,81 +2313,144 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State104 => match next_token {
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State118,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
         State::State105 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
             },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
             },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
             },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
             },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
             },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
             },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
             },
-            Token::CloseBrace { .. } => Action::Shift {
-                new_state: State::State119,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => Action::ReduceExprListC { is_empty: true },
+        },
+
+        State::State106 => Action::ReduceMethod,
+
+        State::State107 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State106 => match next_token {
-            Token::Else { .. } => Action::Shift {
-                new_state: State::State120,
+        State::State108 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
             },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
             },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
             },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
             },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
             },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
             },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
             },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -2179,14 +2458,47 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State109 => match next_token {
-            Token::In { .. } => Action::Shift {
-                new_state: State::State121,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
             },
-            Token::Assign { .. } => Action::Shift {
-                new_state: State::State122,
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
             },
-            Token::Comma { .. } => Action::Shift {
-                new_state: State::State123,
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -2194,43 +2506,71 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State110 => match next_token {
-            Token::Pool { .. } => Action::Shift {
-                new_state: State::State124,
-            },
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State050,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State111 => match next_token {
-            Token::Colon { .. } => Action::Shift {
+        State::State111 => Action::ReduceWhile,
+
+        State::State112 => match next_token {
+            Token::TypeID { .. } => Action::Shift {
+                new_state: State::State123,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State113 => Action::ReduceTypeCase,
+
+        State::State114 => match next_token {
+            Token::SemiColon { .. } => Action::Shift {
+                new_state: State::State124,
+            },
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State115 => Action::ReduceBranchList { is_empty: true },
+
+        State::State116 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceExprListCNE { is_empty: false },
+        },
+
+        State::State117 => match next_token {
+            Token::OpenParen { .. } => Action::Shift {
                 new_state: State::State125,
             },
             _ => {
@@ -2238,81 +2578,125 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State112 => match next_token {
-            Token::Esac { .. } => Action::Shift {
+        State::State118 => match next_token {
+            Token::CloseParen { .. } => Action::Shift {
                 new_state: State::State126,
             },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State111,
+            _ => {
+                return Err(next_line_no);
+            }
+        },
+
+        State::State119 => match next_token {
+            Token::Fi { .. } => Action::Shift {
+                new_state: State::State127,
+            },
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State113 => match next_token {
-            Token::SemiColon { .. } => Action::Shift {
+        State::State120 => match next_token {
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
+            },
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
+            },
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
+            },
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
+            },
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
+            },
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
+            },
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
+            },
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
+            },
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
+            },
+            _ => Action::ReduceExprLet { has_init: false },
+        },
+
+        State::State121 => match next_token {
+            Token::In { .. } => Action::Shift {
                 new_state: State::State128,
             },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State114 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
+            Token::LEq { .. } => Action::Shift {
+                new_state: State::State063,
             },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
+            Token::LT { .. } => Action::Shift {
+                new_state: State::State064,
             },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
+            Token::Eq { .. } => Action::Shift {
+                new_state: State::State065,
             },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
+            Token::Add { .. } => Action::Shift {
+                new_state: State::State066,
             },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
+            Token::Sub { .. } => Action::Shift {
+                new_state: State::State067,
             },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
+            Token::Mul { .. } => Action::Shift {
+                new_state: State::State068,
             },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
+            Token::Div { .. } => Action::Shift {
+                new_state: State::State069,
             },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
+            Token::At { .. } => Action::Shift {
+                new_state: State::State070,
             },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
+            Token::Dot { .. } => Action::Shift {
+                new_state: State::State071,
             },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
+            Token::Comma { .. } => Action::Shift {
+                new_state: State::State129,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
 
-        State::State115 => Action::Reduce35,
+        State::State122 => Action::ReduceExprLet { has_init: false },
 
-        State::State116 => Action::Reduce22,
-
-        State::State117 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
+        State::State123 => match next_token {
+            Token::DArrow { .. } => Action::Shift {
                 new_state: State::State130,
             },
             _ => {
@@ -2320,265 +2704,159 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
             }
         },
 
-        State::State118 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => Action::Reduce26,
-        },
-
-        State::State119 => Action::Reduce10,
-
-        State::State120 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State121 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State122 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State123 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State057,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State124 => Action::Reduce39,
+        State::State124 => Action::ReduceBranchList { is_empty: false },
 
         State::State125 => match next_token {
-            Token::TypeID { .. } => Action::Shift {
-                new_state: State::State136,
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
+            },
+            _ => Action::ReduceExprListC { is_empty: true },
+        },
+
+        State::State126 => Action::ReduceDispatch {
+            dispatch_type: DispatchType::OnExpr,
+        },
+
+        State::State127 => Action::ReduceCond,
+
+        State::State128 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
+            Token::OpenParen { .. } => Action::Shift {
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
             }
         },
-
-        State::State126 => Action::Reduce42,
-
-        State::State127 => match next_token {
-            Token::SemiColon { .. } => Action::Shift {
-                new_state: State::State137,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State128 => Action::Reduce18,
 
         State::State129 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State050,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce25,
+            _ => {
+                return Err(next_line_no);
+            }
         },
 
         State::State130 => match next_token {
+            Token::If { .. } => Action::Shift {
+                new_state: State::State033,
+            },
+            Token::Let { .. } => Action::Shift {
+                new_state: State::State034,
+            },
+            Token::While { .. } => Action::Shift {
+                new_state: State::State035,
+            },
+            Token::Case { .. } => Action::Shift {
+                new_state: State::State036,
+            },
+            Token::New { .. } => Action::Shift {
+                new_state: State::State037,
+            },
+            Token::IsVoid { .. } => Action::Shift {
+                new_state: State::State038,
+            },
+            Token::StrConst { .. } => Action::Shift {
+                new_state: State::State039,
+            },
+            Token::IntConst { .. } => Action::Shift {
+                new_state: State::State040,
+            },
+            Token::BoolConst { .. } => Action::Shift {
+                new_state: State::State041,
+            },
+            Token::ObjectID { .. } => Action::Shift {
+                new_state: State::State042,
+            },
+            Token::Not { .. } => Action::Shift {
+                new_state: State::State043,
+            },
+            Token::Neg { .. } => Action::Shift {
+                new_state: State::State044,
+            },
+            Token::OpenBrace { .. } => Action::Shift {
+                new_state: State::State045,
+            },
             Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State138,
+                new_state: State::State046,
             },
             _ => {
                 return Err(next_line_no);
@@ -2587,7 +2865,7 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
         State::State131 => match next_token {
             Token::CloseParen { .. } => Action::Shift {
-                new_state: State::State139,
+                new_state: State::State135,
             },
             _ => {
                 return Err(next_line_no);
@@ -2595,353 +2873,72 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
         },
 
         State::State132 => match next_token {
-            Token::Fi { .. } => Action::Shift {
-                new_state: State::State140,
-            },
             Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+                new_state: State::State063,
             },
             Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+                new_state: State::State064,
             },
             Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+                new_state: State::State065,
             },
             Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+                new_state: State::State066,
             },
             Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+                new_state: State::State067,
             },
             Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+                new_state: State::State068,
             },
             Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+                new_state: State::State069,
             },
             Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+                new_state: State::State070,
             },
             Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
+                new_state: State::State071,
             },
-            _ => {
-                return Err(next_line_no);
-            }
+            _ => Action::ReduceExprLet { has_init: true },
         },
 
-        State::State133 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce28,
-        },
+        State::State133 => Action::ReduceExprLet { has_init: true },
 
         State::State134 => match next_token {
-            Token::In { .. } => Action::Shift {
-                new_state: State::State141,
-            },
             Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
+                new_state: State::State063,
             },
             Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
+                new_state: State::State064,
             },
             Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
+                new_state: State::State065,
             },
             Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
+                new_state: State::State066,
             },
             Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
+                new_state: State::State067,
             },
             Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
+                new_state: State::State068,
             },
             Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
+                new_state: State::State069,
             },
             Token::At { .. } => Action::Shift {
-                new_state: State::State078,
+                new_state: State::State070,
             },
             Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            Token::Comma { .. } => Action::Shift {
-                new_state: State::State142,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State135 => Action::Reduce30,
-
-        State::State136 => match next_token {
-            Token::DArrow { .. } => Action::Shift {
-                new_state: State::State143,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State137 => Action::Reduce19,
-
-        State::State138 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => Action::Reduce26,
-        },
-
-        State::State139 => Action::Reduce36,
-
-        State::State140 => Action::Reduce38,
-
-        State::State141 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State142 => match next_token {
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State057,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State143 => match next_token {
-            Token::If { .. } => Action::Shift {
-                new_state: State::State039,
-            },
-            Token::Let { .. } => Action::Shift {
-                new_state: State::State040,
-            },
-            Token::While { .. } => Action::Shift {
-                new_state: State::State041,
-            },
-            Token::Case { .. } => Action::Shift {
-                new_state: State::State042,
-            },
-            Token::New { .. } => Action::Shift {
-                new_state: State::State043,
-            },
-            Token::IsVoid { .. } => Action::Shift {
-                new_state: State::State044,
-            },
-            Token::StrConst { .. } => Action::Shift {
-                new_state: State::State045,
-            },
-            Token::IntConst { .. } => Action::Shift {
-                new_state: State::State046,
-            },
-            Token::BoolConst { .. } => Action::Shift {
-                new_state: State::State047,
-            },
-            Token::ObjectID { .. } => Action::Shift {
-                new_state: State::State048,
-            },
-            Token::Not { .. } => Action::Shift {
-                new_state: State::State049,
-            },
-            Token::Neg { .. } => Action::Shift {
-                new_state: State::State050,
-            },
-            Token::OpenBrace { .. } => Action::Shift {
-                new_state: State::State051,
-            },
-            Token::OpenParen { .. } => Action::Shift {
-                new_state: State::State052,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State144 => match next_token {
-            Token::CloseParen { .. } => Action::Shift {
-                new_state: State::State148,
-            },
-            _ => {
-                return Err(next_line_no);
-            }
-        },
-
-        State::State145 => match next_token {
-            Token::LEq { .. } => Action::Shift {
                 new_state: State::State071,
             },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce29,
+            _ => Action::ReduceBranch,
         },
 
-        State::State146 => Action::Reduce31,
-
-        State::State147 => match next_token {
-            Token::LEq { .. } => Action::Shift {
-                new_state: State::State071,
-            },
-            Token::LT { .. } => Action::Shift {
-                new_state: State::State072,
-            },
-            Token::Eq { .. } => Action::Shift {
-                new_state: State::State073,
-            },
-            Token::Add { .. } => Action::Shift {
-                new_state: State::State074,
-            },
-            Token::Sub { .. } => Action::Shift {
-                new_state: State::State075,
-            },
-            Token::Mul { .. } => Action::Shift {
-                new_state: State::State076,
-            },
-            Token::Div { .. } => Action::Shift {
-                new_state: State::State077,
-            },
-            Token::At { .. } => Action::Shift {
-                new_state: State::State078,
-            },
-            Token::Dot { .. } => Action::Shift {
-                new_state: State::State079,
-            },
-            _ => Action::Reduce20,
+        State::State135 => Action::ReduceDispatch {
+            dispatch_type: DispatchType::Static,
         },
-
-        State::State148 => Action::Reduce37,
     })
 }
 
@@ -2949,138 +2946,138 @@ pub fn get_action(top_state: State, next_token: &Token) -> Result<Action, i16> {
 
 pub fn get_reduce_new_state_class_list(top_state: State) -> State {
     match top_state {
-        State::StateInitial => State::State004,
+        State::StateInitial => State::State002,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_class(top_state: State) -> State {
     match top_state {
-        State::StateInitial => State::State005,
-        State::State004 => State::State009,
+        State::StateInitial => State::State003,
+        State::State002 => State::State005,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_feature_list(top_state: State) -> State {
     match top_state {
+        State::State008 => State::State011,
         State::State012 => State::State016,
-        State::State017 => State::State022,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_feature(top_state: State) -> State {
     match top_state {
-        State::State016 => State::State021,
-        State::State022 => State::State021,
+        State::State011 => State::State015,
+        State::State016 => State::State015,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_formal_list_ne(top_state: State) -> State {
     match top_state {
-        State::State023 => State::State028,
+        State::State017 => State::State022,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_formal_list(top_state: State) -> State {
     match top_state {
-        State::State023 => State::State029,
+        State::State017 => State::State023,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_formal(top_state: State) -> State {
     match top_state {
-        State::State023 => State::State030,
-        State::State033 => State::State037,
+        State::State017 => State::State024,
+        State::State027 => State::State031,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_branch_list(top_state: State) -> State {
     match top_state {
-        State::State086 => State::State112,
+        State::State076 => State::State099,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_branch(top_state: State) -> State {
     match top_state {
-        State::State086 => State::State113,
-        State::State112 => State::State127,
+        State::State076 => State::State100,
+        State::State099 => State::State114,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_expression_list_sc(top_state: State) -> State {
     match top_state {
-        State::State051 => State::State068,
+        State::State045 => State::State060,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_expression_list_c_ne(top_state: State) -> State {
     match top_state {
-        State::State064 => State::State088,
-        State::State118 => State::State088,
-        State::State138 => State::State088,
+        State::State057 => State::State078,
+        State::State105 => State::State078,
+        State::State125 => State::State078,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_expression_list_c(top_state: State) -> State {
     match top_state {
-        State::State064 => State::State089,
-        State::State118 => State::State131,
-        State::State138 => State::State144,
+        State::State057 => State::State079,
+        State::State105 => State::State118,
+        State::State125 => State::State131,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_expression_let(top_state: State) -> State {
     match top_state {
-        State::State040 => State::State058,
-        State::State123 => State::State135,
-        State::State142 => State::State146,
+        State::State034 => State::State051,
+        State::State110 => State::State122,
+        State::State129 => State::State133,
         _ => panic!("Impossible branch"),
     }
 }
 
 pub fn get_reduce_new_state_expression(top_state: State) -> State {
     match top_state {
-        State::State035 => State::State053,
-        State::State039 => State::State055,
-        State::State041 => State::State059,
-        State::State042 => State::State060,
-        State::State044 => State::State062,
-        State::State049 => State::State065,
-        State::State050 => State::State066,
-        State::State051 => State::State069,
-        State::State052 => State::State070,
-        State::State063 => State::State087,
-        State::State064 => State::State090,
-        State::State068 => State::State093,
-        State::State071 => State::State096,
-        State::State072 => State::State097,
-        State::State073 => State::State098,
-        State::State074 => State::State099,
-        State::State075 => State::State100,
-        State::State076 => State::State101,
-        State::State077 => State::State102,
-        State::State080 => State::State105,
-        State::State081 => State::State106,
-        State::State085 => State::State110,
-        State::State114 => State::State129,
-        State::State118 => State::State090,
-        State::State120 => State::State132,
-        State::State121 => State::State133,
-        State::State122 => State::State134,
-        State::State138 => State::State090,
-        State::State141 => State::State145,
-        State::State143 => State::State147,
+        State::State029 => State::State047,
+        State::State033 => State::State049,
+        State::State035 => State::State052,
+        State::State036 => State::State053,
+        State::State038 => State::State055,
+        State::State043 => State::State058,
+        State::State044 => State::State059,
+        State::State045 => State::State061,
+        State::State046 => State::State062,
+        State::State056 => State::State077,
+        State::State057 => State::State080,
+        State::State060 => State::State082,
+        State::State063 => State::State085,
+        State::State064 => State::State086,
+        State::State065 => State::State087,
+        State::State066 => State::State088,
+        State::State067 => State::State089,
+        State::State068 => State::State090,
+        State::State069 => State::State091,
+        State::State072 => State::State094,
+        State::State073 => State::State095,
+        State::State075 => State::State097,
+        State::State101 => State::State116,
+        State::State105 => State::State080,
+        State::State107 => State::State119,
+        State::State108 => State::State120,
+        State::State109 => State::State121,
+        State::State125 => State::State080,
+        State::State128 => State::State132,
+        State::State130 => State::State134,
         _ => panic!("Impossible branch"),
     }
 }

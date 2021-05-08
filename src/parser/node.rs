@@ -305,7 +305,7 @@ pub enum ParseStackNode {
         line_no: i16,
         expr: Box<Expression>,
     },
-    Object {
+    VarByName {
         // Expr type
         line_no: i16,
         name: ObjectID,
@@ -379,7 +379,7 @@ impl ParseStackNode {
             | ParseStackNode::StringConst { line_no, .. }
             | ParseStackNode::New { line_no, .. }
             | ParseStackNode::IsVoid { line_no, .. }
-            | ParseStackNode::Object { line_no, .. } => *line_no,
+            | ParseStackNode::VarByName { line_no, .. } => *line_no,
             _ => panic!("No line_no for this node type"),
         }
     }
@@ -456,7 +456,7 @@ impl ParseStackNode {
                     attrs,
                     methods,
                     family: 0..0,
-                    child_names: vec![],
+                    child_names: Vec::new(),
                     method_name_to_pos: IndexMap::new(),
                     dispatch_table: Vec::new(),
                 },
@@ -673,7 +673,7 @@ impl ParseStackNode {
             },
             ParseStackNode::New { line_no, type_name } => Expression::New { line_no, type_name },
             ParseStackNode::IsVoid { line_no, expr } => Expression::IsVoid { line_no, expr },
-            ParseStackNode::Object { line_no, name } => Expression::Object {
+            ParseStackNode::VarByName { line_no, name } => Expression::VarByName {
                 line_no,
                 name,
                 static_type,
@@ -697,14 +697,6 @@ impl ParseStackNode {
             ParseStackNode::TermMul { .. } => ArithOpType::Mul,
             ParseStackNode::TermDiv { .. } => ArithOpType::Div,
             _ => panic!("Bad node type"),
-        }
-    }
-
-    pub fn into_object_id(self) -> ObjectID {
-        if let ParseStackNode::TermObjectID { obj_name, .. } = self {
-            ObjectID::new(obj_name)
-        } else {
-            panic!("Bad node type")
         }
     }
 

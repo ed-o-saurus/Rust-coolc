@@ -238,7 +238,7 @@ pub enum Expression {
         expr: Box<Expression>,
     },
     NoExpr,
-    Object {
+    VarByName {
         line_no: i16,
         name: ObjectID,
         static_type: TypeID,
@@ -265,7 +265,7 @@ impl Expression {
             | Expression::StringConst { line_no, .. }
             | Expression::New { line_no, .. }
             | Expression::IsVoid { line_no, .. }
-            | Expression::Object { line_no, .. } => *line_no,
+            | Expression::VarByName { line_no, .. } => *line_no,
             _ => panic!("Bad expr type"),
         }
     }
@@ -295,7 +295,7 @@ impl Expression {
             Expression::Dispatch { static_type, .. }
             | Expression::Cond { static_type, .. }
             | Expression::TypeCase { static_type, .. }
-            | Expression::Object { static_type, .. } => static_type.clone(),
+            | Expression::VarByName { static_type, .. } => static_type.clone(),
         }
     }
 }
