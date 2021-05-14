@@ -7,7 +7,7 @@ COOL is the *Classroom Object Oriented Language* which was created by [Professor
 Several years ago, I took an online version of Prof Aiken's [compilers course](https://www.edx.org/course/compilers). The course had a series of challenging projects that, together, formed a functioning compiler. Recently, I wanted to learn [Rust](https://www.rust-lang.org/). To that end, I decided to implement a COOL compiler entirely in Rust. 
 
 ## Building the Compiler
-In order to build the compiler, you must have the rust compiler installed. More information is available at https://www.rust-lang.org/.
+In order to build the compiler, you must have the Rust compiler installed. More information is available at https://www.rust-lang.org/.
 Building the compiler is accomplished in the standard way:
 
     > cargo build
