@@ -96,9 +96,7 @@ fn coolc() -> Result<(), String> {
         semant(classes)?;
 
     // add lengths of source files to int_table
-    for (in_file_name, file_no) in in_file_names.iter().zip(1..) {
-        let in_file_name = get_name(in_file_name, file_no)?;
-
+    for in_file_name in in_file_names.iter() {
         int_table.insert(in_file_name.len() as u32);
     }
 
