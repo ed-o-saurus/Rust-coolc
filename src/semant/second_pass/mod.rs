@@ -129,6 +129,10 @@ pub fn conforms(
         return true;
     }
 
+    if class_name1.is_self_type() {
+        return class_name2 == current_class_name;
+    }
+
     if class_name2.is_self_type() {
         return false;
     }
