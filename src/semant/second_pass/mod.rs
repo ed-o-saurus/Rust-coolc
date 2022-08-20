@@ -130,7 +130,7 @@ pub fn conforms(
     }
 
     if class_name1.is_self_type() {
-        return class_name2 == current_class_name;
+        return conforms(current_class_name, class_name2, current_class_name, families);
     }
 
     if class_name2.is_self_type() {
